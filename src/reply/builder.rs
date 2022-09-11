@@ -213,7 +213,7 @@ impl<'att> CreateReply<'att> {
         if let Some(content) = content {
             f.content(content);
         }
-        f.add_embeds(embeds);
+        f.set_embeds(embeds);
         for attachment in attachments {
             f.attachment(attachment);
         }
