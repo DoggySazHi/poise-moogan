@@ -6,7 +6,6 @@
 #![allow(clippy::type_complexity)]
 // native #[non_exhaustive] is awful because you can't do struct update syntax with it (??)
 #![allow(clippy::manual_non_exhaustive)]
-#![allow(deprecated)]
 
 /*!
 Poise is an opinionated Discord bot framework with a few distinctive features:
@@ -58,7 +57,7 @@ To set multiple gateway events, use the OR operator:
 You can run Discord actions outside of commands by cloning and storing [`serenity::CacheAndHttp`]/
 [`Arc<serenity::Http>`](serenity::Http)/[`Arc<serenity::Cache>`](serenity::Cache). You can get
 those either from [`serenity::Context`] (passed to
-[`user_data_setup`](crate::FrameworkBuilder::user_data_setup) and all commands via
+[`setup`](crate::FrameworkBuilder::setup) and all commands via
 [`ctx.discord()`](crate::Context::discord)) or before starting the framework via
 [`framework.client()`](crate::Framework::client)[`.cache_and_http`](serenity::Client::cache_and_http).
 
@@ -231,7 +230,7 @@ async fn error_handler(error: poise::FrameworkError<'_, Data, Error>) {
 // Use `Framework::builder()` to create a framework builder and supply basic data to the framework:
 poise::Framework::builder()
     .token("...")
-    .user_data_setup(|_, _, _| Box::pin(async move {
+    .setup(|_, _, _| Box::pin(async move {
         // construct user data here (invoked when bot connects to Discord)
         Ok(())
     }))
@@ -281,7 +280,7 @@ functions manually:
 - [`serenity::Command::set_global_application_commands`]
 - [`serenity::GuildId::set_application_commands`]
 
-For example, you could call this function in [`FrameworkBuilder::user_data_setup`] to automatically
+For example, you could call this function in [`FrameworkBuilder::setup`] to automatically
 register commands on startup. Also see the docs of [`builtins::create_application_commands`].
 
 The lowest level of abstraction for registering commands is [`Command::create_as_slash_command`]
@@ -331,7 +330,11 @@ pub mod slash_argument;
 pub mod structs;
 pub mod track_edits;
 mod util;
-pub use poise_macros as macros;
+pub mod macros {
+    //! Procedural macros used in poise, like [`command`]
+    #[doc(inline)]
+    pub use poise_macros::*;
+}
 
 #[doc(no_inline)]
 pub use {

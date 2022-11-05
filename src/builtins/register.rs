@@ -47,6 +47,43 @@ pub fn create_application_commands<U, E>(
     }
     commands_builder
 }
+
+/// Registers the given list of application commands to Discord as global commands.
+///
+/// Thin wrapper around [`create_application_commands`] that funnels the returned builder into
+/// [`serenity::Command::set_global_application_commands`].
+pub async fn register_globally<U, E>(
+    http: impl AsRef<serenity::Http>,
+    commands: &[crate::Command<U, E>],
+) -> Result<(), serenity::Error> {
+    let builder = create_application_commands(commands);
+    serenity::Command::set_global_application_commands(http, |b| {
+        *b = builder;
+        b
+    })
+    .await?;
+    Ok(())
+}
+
+/// Registers the given list of application commands to Discord as guild-specific commands.
+///
+/// Thin wrapper around [`create_application_commands`] that funnels the returned builder into
+/// [`serenity::GuildId::set_application_commands`].
+pub async fn register_in_guild<U, E>(
+    http: impl AsRef<serenity::Http>,
+    commands: &[crate::Command<U, E>],
+    guild_id: serenity::GuildId,
+) -> Result<(), serenity::Error> {
+    let builder = create_application_commands(commands);
+    guild_id
+        .set_application_commands(http, |b| {
+            *b = builder;
+            b
+        })
+        .await?;
+    Ok(())
+}
+
 /// _Note: you probably want [`register_application_commands_buttons`] instead; it's easier and more
 /// powerful_
 ///
@@ -153,11 +190,13 @@ pub async fn register_application_commands_buttons<U, E>(
                             b.custom_id("register.guild")
                                 .label("Register in guild")
                                 .style(serenity::ButtonStyle::Primary)
+                                .emoji('📋')
                         })
                         .create_button(|b| {
                             b.custom_id("unregister.guild")
                                 .label("Delete in guild")
                                 .style(serenity::ButtonStyle::Danger)
+                                .emoji('🗑')
                         })
                     })
                     .create_action_row(|r| {
@@ -165,11 +204,13 @@ pub async fn register_application_commands_buttons<U, E>(
                             b.custom_id("register.global")
                                 .label("Register globally")
                                 .style(serenity::ButtonStyle::Primary)
+                                .emoji('📋')
                         })
                         .create_button(|b| {
                             b.custom_id("unregister.global")
                                 .label("Delete globally")
                                 .style(serenity::ButtonStyle::Danger)
+                                .emoji('🗑')
                         })
                     })
                 })
@@ -183,11 +224,16 @@ pub async fn register_application_commands_buttons<U, E>(
         .author_id(ctx.author().id)
         .await;
 
-    reply.edit(ctx, |b| b.components(|b| b)).await?; // remove buttons after button press
+    reply
+        .edit(ctx, |b| {
+            b.components(|b| b).content("Processing... Please wait.")
+        })
+        .await?; // remove buttons after button press and edit message
     let pressed_button_id = match &interaction {
         Some(m) => &m.data.custom_id,
         None => {
-            ctx.say("You didn't interact in time").await?;
+            ctx.say(":warning: You didn't interact in time - please run the command again.")
+                .await?;
             return Ok(());
         }
     };
@@ -203,30 +249,38 @@ pub async fn register_application_commands_buttons<U, E>(
         }
     };
 
+    let start_time = std::time::Instant::now();
+
     if global {
         if register {
-            ctx.say(format!("Registering {} global commands...", num_commands))
-                .await?;
+            ctx.say(format!(
+                ":gear: Registering {} global commands...",
+                num_commands
+            ))
+            .await?;
             serenity::Command::set_global_application_commands(ctx.discord(), |b| {
                 *b = create_commands;
                 b
             })
             .await?;
         } else {
-            ctx.say("Unregistering global commands...").await?;
+            ctx.say(":gear: Unregistering global commands...").await?;
             serenity::Command::set_global_application_commands(ctx.discord(), |b| b).await?;
         }
     } else {
         let guild_id = match ctx.guild_id() {
             Some(x) => x,
             None => {
-                ctx.say("Must be called in guild").await?;
+                ctx.say(":x: Must be called in guild").await?;
                 return Ok(());
             }
         };
         if register {
-            ctx.say(format!("Registering {} guild commands...", num_commands))
-                .await?;
+            ctx.say(format!(
+                ":gear: Registering {} guild commands...",
+                num_commands
+            ))
+            .await?;
             guild_id
                 .set_application_commands(ctx.discord(), |b| {
                     *b = create_commands;
@@ -234,13 +288,20 @@ pub async fn register_application_commands_buttons<U, E>(
                 })
                 .await?;
         } else {
-            ctx.say("Unregistering guild commands...").await?;
+            ctx.say(":gear: Unregistering guild commands...").await?;
             guild_id
                 .set_application_commands(ctx.discord(), |b| b)
                 .await?;
         }
     }
 
-    ctx.say("Done!").await?;
+    // Calulate time taken and send message
+    let time_taken = start_time.elapsed();
+    ctx.say(format!(
+        ":white_check_mark: Done! Took {}ms",
+        time_taken.as_millis()
+    ))
+    .await?;
+
     Ok(())
 }
