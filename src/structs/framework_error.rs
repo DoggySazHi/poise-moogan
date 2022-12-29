@@ -22,9 +22,9 @@ pub enum FrameworkError<'a, U, E> {
         #[derivative(Debug = "ignore")]
         ctx: &'a serenity::Context,
     },
-    /// User code threw an error in generic event listener
-    Listener {
-        /// Error which was thrown in the listener code
+    /// User code threw an error in generic event event handler
+    EventHandler {
+        /// Error which was thrown in the event handler code
         error: E,
         /// The serenity Context passed to the event
         #[derivative(Debug = "ignore")]
@@ -165,22 +165,22 @@ pub enum FrameworkError<'a, U, E> {
 
 impl<'a, U, E> FrameworkError<'a, U, E> {
     /// Returns the [`serenity::Context`] of this error
-    pub fn discord(&self) -> &'a serenity::Context {
+    pub fn serenity_context(&self) -> &'a serenity::Context {
         match *self {
             Self::Setup { ctx, .. } => ctx,
-            Self::Listener { ctx, .. } => ctx,
-            Self::Command { ctx, .. } => ctx.discord(),
-            Self::ArgumentParse { ctx, .. } => ctx.discord(),
-            Self::CommandStructureMismatch { ctx, .. } => ctx.discord,
-            Self::CooldownHit { ctx, .. } => ctx.discord(),
-            Self::MissingBotPermissions { ctx, .. } => ctx.discord(),
-            Self::MissingUserPermissions { ctx, .. } => ctx.discord(),
-            Self::NotAnOwner { ctx, .. } => ctx.discord(),
-            Self::GuildOnly { ctx, .. } => ctx.discord(),
-            Self::DmOnly { ctx, .. } => ctx.discord(),
-            Self::NsfwOnly { ctx, .. } => ctx.discord(),
-            Self::CommandCheckFailed { ctx, .. } => ctx.discord(),
-            Self::DynamicPrefix { ctx, .. } => ctx.discord,
+            Self::EventHandler { ctx, .. } => ctx,
+            Self::Command { ctx, .. } => ctx.serenity_context(),
+            Self::ArgumentParse { ctx, .. } => ctx.serenity_context(),
+            Self::CommandStructureMismatch { ctx, .. } => ctx.serenity_context,
+            Self::CooldownHit { ctx, .. } => ctx.serenity_context(),
+            Self::MissingBotPermissions { ctx, .. } => ctx.serenity_context(),
+            Self::MissingUserPermissions { ctx, .. } => ctx.serenity_context(),
+            Self::NotAnOwner { ctx, .. } => ctx.serenity_context(),
+            Self::GuildOnly { ctx, .. } => ctx.serenity_context(),
+            Self::DmOnly { ctx, .. } => ctx.serenity_context(),
+            Self::NsfwOnly { ctx, .. } => ctx.serenity_context(),
+            Self::CommandCheckFailed { ctx, .. } => ctx.serenity_context(),
+            Self::DynamicPrefix { ctx, .. } => ctx.serenity_context,
             Self::UnknownCommand { ctx, .. } => ctx,
             Self::UnknownInteraction { ctx, .. } => ctx,
             Self::__NonExhaustive => unreachable!(),
@@ -202,7 +202,7 @@ impl<'a, U, E> FrameworkError<'a, U, E> {
             Self::NsfwOnly { ctx, .. } => ctx,
             Self::CommandCheckFailed { ctx, .. } => ctx,
             Self::Setup { .. }
-            | Self::Listener { .. }
+            | Self::EventHandler { .. }
             | Self::UnknownCommand { .. }
             | Self::UnknownInteraction { .. }
             | Self::DynamicPrefix { .. } => return None,
@@ -236,12 +236,12 @@ impl<U, E: std::fmt::Display> std::fmt::Display for FrameworkError<'_, U, E> {
                 data_about_bot: _,
                 ctx: _,
             } => write!(f, "poise setup error"),
-            Self::Listener {
+            Self::EventHandler {
                 error: _,
                 ctx: _,
                 event,
                 framework: _,
-            } => write!(f, "error in {} event listener", event.name()),
+            } => write!(f, "error in {} event event handler", event.name()),
             Self::Command { error: _, ctx } => {
                 write!(f, "error in command `{}`", full_command_name!(ctx))
             }
@@ -341,7 +341,7 @@ impl<'a, U: std::fmt::Debug, E: std::error::Error + 'static> std::error::Error
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Setup { error, .. } => Some(error),
-            Self::Listener { error, .. } => Some(error),
+            Self::EventHandler { error, .. } => Some(error),
             Self::Command { error, .. } => Some(error),
             Self::ArgumentParse { error, .. } => Some(&**error),
             Self::CommandStructureMismatch { .. } => None,

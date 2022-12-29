@@ -14,7 +14,7 @@ async fn strip_prefix<'a, U, E>(
         guild_id: msg.guild_id,
         channel_id: msg.channel_id,
         author: &msg.author,
-        discord: ctx,
+        serenity_context: ctx,
         framework,
         data: framework.user_data().await,
     };
@@ -258,7 +258,7 @@ pub async fn parse_invocation<'a, U: Send + Sync, E>(
     };
 
     Ok(Some(crate::PrefixContext {
-        discord: ctx,
+        serenity_context: ctx,
         msg,
         prefix,
         invoked_command_name,
@@ -293,7 +293,10 @@ pub async fn run_invocation<U, E>(
 
     // Typing is broadcasted as long as this object is alive
     let _typing_broadcaster = if ctx.command.broadcast_typing {
-        ctx.msg.channel_id.start_typing(&ctx.discord.http).ok()
+        ctx.msg
+            .channel_id
+            .start_typing(&ctx.serenity_context.http)
+            .ok()
     } else {
         None
     };
@@ -305,7 +308,10 @@ pub async fn run_invocation<U, E>(
     // execute_untracked_edits situation and start an infinite loop
     // Reported by vicky5124 https://discord.com/channels/381880193251409931/381912587505500160/897981367604903966
     if let Some(edit_tracker) = &ctx.framework.options.prefix_options.edit_tracker {
-        edit_tracker.write().unwrap().track_command(ctx.msg);
+        edit_tracker
+            .write()
+            .unwrap()
+            .track_command(ctx.msg, ctx.command.track_deletion);
     }
 
     // Execute command

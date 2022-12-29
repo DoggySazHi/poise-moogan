@@ -51,7 +51,7 @@ pub fn generate_parameters(inv: &Invocation) -> Result<Vec<proc_macro2::TokenStr
                         // AutocompleteChoice<T> -> serde_json::Value
                         .map(|choice| poise::serenity_prelude::json::json!({
                             "name": choice.name,
-                            "value": poise::serenity_prelude::json::Value::from(choice.value),
+                            "value": choice.value,
                         }))
                         .collect()
                         .await;
@@ -162,7 +162,7 @@ pub fn generate_slash_action(inv: &Invocation) -> Result<proc_macro2::TokenStrea
             #[allow(clippy::needless_question_mark)]
 
             let ( #( #param_identifiers, )* ) = ::poise::parse_slash_args!(
-                ctx.discord, ctx.interaction, ctx.args =>
+                ctx.serenity_context, ctx.interaction, ctx.args =>
                 #( (#param_names: #param_types), )*
             ).await.map_err(|error| match error {
                 poise::SlashArgError::CommandStructureMismatch(description) => {

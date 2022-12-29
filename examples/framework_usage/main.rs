@@ -87,6 +87,7 @@ async fn main() {
             #[cfg(feature = "cache")]
             general::servers(),
             general::reply(),
+            general::add(),
             context_menu::user_info(),
             context_menu::echo(),
             autocomplete::greet(),
@@ -94,7 +95,8 @@ async fn main() {
             checks::modonly(),
             checks::delete(),
             checks::ferrisparty(),
-            checks::add(),
+            checks::cooldowns(),
+            checks::minmax(),
             checks::get_guild_name(),
             checks::only_in_dms(),
             checks::lennyface(),
@@ -134,9 +136,12 @@ async fn main() {
                 Ok(true)
             })
         }),
-        listener: |_ctx, event, _framework, _data| {
+        /// Enforce command checks even for owners (enforced by default)
+        /// Set to true to bypass checks, which is useful for testing
+        skip_checks_for_owners: false,
+        event_handler: |_ctx, event, _framework, _data| {
             Box::pin(async move {
-                println!("Got an event in listener: {:?}", event.name());
+                println!("Got an event in event handler: {:?}", event.name());
                 Ok(())
             })
         },

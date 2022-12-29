@@ -86,7 +86,7 @@ async fn _send_application_reply<'a, U, E>(
     let followup = if has_sent_initial_response {
         Some(Box::new(
             interaction
-                .create_followup_message(ctx.discord, |f| {
+                .create_followup_message(ctx.serenity_context, |f| {
                     data.to_slash_followup_response(f);
                     f
                 })
@@ -94,7 +94,7 @@ async fn _send_application_reply<'a, U, E>(
         ))
     } else {
         interaction
-            .create_interaction_response(ctx.discord, |r| {
+            .create_interaction_response(ctx.serenity_context, |r| {
                 r.kind(serenity::InteractionResponseType::ChannelMessageWithSource)
                     .interaction_response_data(|f| {
                         data.to_slash_initial_response(f);
@@ -109,7 +109,7 @@ async fn _send_application_reply<'a, U, E>(
     };
 
     Ok(crate::ReplyHandle(crate::ReplyHandleInner::Application {
-        http: &ctx.discord.http,
+        http: &ctx.serenity_context.http,
         interaction,
         followup,
     }))
@@ -141,22 +141,24 @@ async fn _send_prefix_reply<'a, U, E>(
     // This must only return None when we _actually_ want to reuse the existing response! There are
     // no checks later
     let lock_edit_tracker = || {
-        if ctx.command.reuse_response {
-            if let Some(edit_tracker) = &ctx.framework.options().prefix_options.edit_tracker {
-                return Some(edit_tracker.write().unwrap());
-            }
+        if let Some(edit_tracker) = &ctx.framework.options().prefix_options.edit_tracker {
+            return Some(edit_tracker.write().unwrap());
         }
         None
     };
 
-    let existing_response = lock_edit_tracker()
-        .as_mut()
-        .and_then(|t| t.find_bot_response(ctx.msg.id))
-        .cloned();
+    let existing_response = if ctx.command.reuse_response {
+        lock_edit_tracker()
+            .as_mut()
+            .and_then(|t| t.find_bot_response(ctx.msg.id))
+            .cloned()
+    } else {
+        None
+    };
 
     Ok(Box::new(if let Some(mut response) = existing_response {
         response
-            .edit(ctx.discord, |f| {
+            .edit(ctx.serenity_context, |f| {
                 // Reset the message. We don't want leftovers of the previous message (e.g. user
                 // sends a message with `.content("abc")` in a track_edits command, and the edited
                 // message happens to contain embeds, we don't want to keep those embeds)
@@ -172,8 +174,9 @@ async fn _send_prefix_reply<'a, U, E>(
             .await?;
 
         // If the entry still exists after the await, update it to the new contents
+        // We don't check ctx.command.reuse_response because it's true anyways in this branch
         if let Some(mut edit_tracker) = lock_edit_tracker() {
-            edit_tracker.set_bot_response(ctx.msg, response.clone());
+            edit_tracker.set_bot_response(ctx.msg, response.clone(), ctx.command.track_deletion);
         }
 
         response
@@ -181,13 +184,15 @@ async fn _send_prefix_reply<'a, U, E>(
         let new_response = ctx
             .msg
             .channel_id
-            .send_message(ctx.discord, |m| {
+            .send_message(ctx.serenity_context, |m| {
                 reply.to_prefix(m, ctx.msg);
                 m
             })
             .await?;
+        // We don't check ctx.command.reuse_response because we need to store bot responses for
+        // track_deletion too
         if let Some(track_edits) = &mut lock_edit_tracker() {
-            track_edits.set_bot_response(ctx.msg, new_response.clone());
+            track_edits.set_bot_response(ctx.msg, new_response.clone(), ctx.command.track_deletion);
         }
 
         new_response

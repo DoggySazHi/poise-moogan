@@ -9,6 +9,9 @@ pub use help::*;
 mod register;
 pub use register::*;
 
+mod paginate;
+pub use paginate::*;
+
 use crate::serenity_prelude as serenity;
 
 /// An error handler that logs errors either via the [`log`] crate or via a Discord message. Set
@@ -33,8 +36,8 @@ pub async fn on_error<U, E: std::fmt::Display + std::fmt::Debug>(
         crate::FrameworkError::Setup { error, .. } => {
             log::error!("Error in user data setup: {}", error);
         }
-        crate::FrameworkError::Listener { error, event, .. } => log::error!(
-            "User event listener encountered an error on {} event: {}",
+        crate::FrameworkError::EventHandler { error, event, .. } => log::error!(
+            "User event event handler encountered an error on {} event: {}",
             event.name(),
             error
         ),
@@ -191,14 +194,7 @@ pub async fn autocomplete_command<'a, U, E>(
 pub async fn servers<U, E>(ctx: crate::Context<'_, U, E>) -> Result<(), serenity::Error> {
     use std::fmt::Write as _;
 
-    let mut show_private_guilds = false;
-    if let crate::Context::Application(_) = ctx {
-        if let Ok(app) = ctx.discord().http.get_current_application_info().await {
-            if app.owner.id == ctx.author().id {
-                show_private_guilds = true;
-            }
-        }
-    }
+    let show_private_guilds = ctx.framework().options().owners.contains(&ctx.author().id);
 
     /// Stores details of a guild for the purposes of listing it in the bot guild list
     struct Guild {
@@ -210,12 +206,12 @@ pub async fn servers<U, E>(ctx: crate::Context<'_, U, E>) -> Result<(), serenity
         is_public: bool,
     }
 
-    let guild_ids = ctx.discord().cache.guilds();
+    let guild_ids = ctx.sc().cache.guilds();
     let mut num_unavailable_guilds = 0;
     let mut guilds = guild_ids
         .iter()
         .map(|&guild_id| {
-            ctx.discord().cache.guild_field(guild_id, |guild| Guild {
+            ctx.sc().cache.guild_field(guild_id, |guild| Guild {
                 name: guild.name.clone(),
                 num_members: guild.member_count,
                 is_public: guild.features.iter().any(|x| x == "DISCOVERABLE"),
