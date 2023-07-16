@@ -1,4 +1,4 @@
-[![Build](https://img.shields.io/github/actions/workflow/status/kangalioo/poise/ci.yml?branch=develop)](https://kangalioo.github.io/poise/)
+[![Build](https://img.shields.io/github/actions/workflow/status/serenity-rs/poise/ci.yml?branch=current)](https://serenity-rs.github.io/poise/)
 [![crates.io](https://img.shields.io/crates/v/poise.svg)](https://crates.io/crates/poise)
 [![Docs](https://img.shields.io/badge/docs-online-informational)](https://docs.rs/poise/)
 [![Docs (git)](https://img.shields.io/badge/docs%20%28git%29-online-informational)](https://serenity-rs.github.io/poise/)
@@ -11,7 +11,7 @@ Poise is an opinionated Discord bot framework with a few distinctive features:
 - slash commands: completely define both normal and slash commands with a single function
 - flexible argument parsing: command parameters are defined with normal Rust types and parsed automatically
 
-# [See documentation for more info](https://docs.rs/poise/)
+# See [API documentation](https://docs.rs/poise/) and [examples](examples)
 
 # Bots using poise
 

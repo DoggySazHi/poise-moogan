@@ -204,7 +204,7 @@ async fn my_huge_ass_command(
 fn my_huge_ass_command_help() -> String {
     String::from("\
 Example usage:
-~my_huge_ass_command 127.0.0.1 @kangalioo `i = i + 1` my_flag rest of the message")
+~my_huge_ass_command 127.0.0.1 @kangalio `i = i + 1` my_flag rest of the message")
 }
 
 async fn check(ctx: Context<'_>) -> Result<bool, Error> {
@@ -468,3 +468,33 @@ use serenity_prelude as serenity; // private alias for crate root docs intradoc-
 ///
 /// An owned future has the `'static` lifetime.
 pub type BoxFuture<'a, T> = std::pin::Pin<Box<dyn std::future::Future<Output = T> + Send + 'a>>;
+
+/// Internal wrapper function for catch_unwind that respects the `handle_panics` feature flag
+async fn catch_unwind_maybe<T>(
+    fut: impl std::future::Future<Output = T>,
+) -> Result<T, Option<String>> {
+    #[cfg(feature = "handle_panics")]
+    let res = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(fut))
+        .await
+        .map_err(|e| {
+            if let Some(s) = e.downcast_ref::<&str>() {
+                Some(s.to_string())
+            } else if let Ok(s) = e.downcast::<String>() {
+                Some(*s)
+            } else {
+                None
+            }
+        });
+    #[cfg(not(feature = "handle_panics"))]
+    let res = Ok(fut.await);
+    res
+}
+
+#[cfg(test)]
+mod tests {
+    fn _assert_send_sync<T: Send + Sync>() {}
+
+    fn _test_framework_error_send_sync<'a, U: Send + Sync + 'static, E: Send + Sync + 'static>() {
+        _assert_send_sync::<crate::FrameworkError<'a, U, E>>();
+    }
+}
